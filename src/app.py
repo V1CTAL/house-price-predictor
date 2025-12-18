@@ -1,6 +1,14 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns  # type: ignore
+from pathlib import Path
+from datetime import datetime, timedelta
+from typing import Dict, Any, Optional, Union
+
+# Local imports
+# Assuming these files exist in your project structure
 from predictor import HousingPredictor
 from visualizations import *
 
@@ -39,21 +47,41 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Load model and data
+# Define paths using pathlib for cross-platform compatibility
+# This approach makes file path handling more robust and readable
+MODEL_PATH: Path = Path('./models/housing_price_model.pkl')
+DATA_PATH: Path = Path('./data/housing_cleaned.csv')
 
 
 @st.cache_resource
 def load_model():
-    return HousingPredictor('./models/housing_price_model.pkl')
+    """
+    Load the trained housing price prediction model from disk.
+
+    Returns:
+        HousingPredictor: The loaded machine learning model
+
+    Note: Uses Streamlit's cache to avoid reloading on every interaction
+    """
+    return HousingPredictor(MODEL_PATH)
 
 
 @st.cache_data
 def load_data():
-    return pd.read_csv('./data/housing_cleaned.csv')
+    """
+    Load the cleaned housing dataset from CSV file.
+
+    Returns:
+        pd.DataFrame: DataFrame containing all housing records
+
+    Note: Cached to improve performance across page navigation
+    """
+    return pd.read_csv(DATA_PATH)
 
 
-model = load_model()
-data = load_data()
+# Load model and data into memory
+model: HousingPredictor = load_model()
+data: pd.DataFrame = load_data()
 
 # Sidebar navigation
 st.sidebar.title('🏠 Navigation')
@@ -94,15 +122,15 @@ if page == 'Home':
         st.metric('Total Properties', f'{len(data):,}')
 
     with col2:
-        avg_price = data['median_house_value'].mean()
+        avg_price: float = data['median_house_value'].mean()
         st.metric('Average Price', f'${avg_price:,.0f}')
 
     with col3:
-        max_price = data['median_house_value'].max()
+        max_price: float = data['median_house_value'].max()
         st.metric('Highest Price', f'${max_price:,.0f}')
 
     with col4:
-        min_price = data['median_house_value'].min()
+        min_price: float = data['median_house_value'].min()
         st.metric('Lower Price', f'${min_price:,.0f}')
 
     # Quick visualization
@@ -202,12 +230,12 @@ elif page == 'Price Predictor':
 
         if submitted:
             # Calculated engineered features
-            bedrooms_per_room = 0.2  # Approximate
-            rooms_per_household = total_rooms / households
-            population_per_household = population / households
+            bedrooms_per_room: float = 0.2  # Approximate
+            rooms_per_household: float = total_rooms / households
+            population_per_household: float = population / households
 
             # Prepare features (must match training data)
-            features = {
+            features: Dict[str, Any] = {
                 'longitude': longitude,
                 'latitude': latitude,
                 'housing_median_age': housing_median_age,
@@ -220,13 +248,18 @@ elif page == 'Price Predictor':
                 'population_per_household': population_per_household
             }
 
-            # Add one-hot encoded ocean proximity
-            for prox in ['NEAR BAY', 'INLAND', '1<H OCEAN', 'NEAR OCEAN', 'ISLAND']:
-                features[f'ocean_{prox.replace(" ", "_")}'] = 1 if ocean_proximity == prox else 0
+            # Add one-hot encoded ocean proximity features
+            # Each category becomes a binary feature (1, matches, 0 otherwise)
+            ocean_categories: list[str] = [
+                'NEAR BAY', 'INLAND', '1<H OCEAN', 'NEAR OCEAN', 'ISLAND']
+            for prox in ocean_categories:
+                features[f'ocean_{prox.replace(" ", "_")
+                                  .replace("<", "")}'] = 1 if ocean_proximity == prox else 0
 
             # Make prediction
             with st.spinner('Calculating price...'):
-                prediction_result = model.predict_with_confidence(features)
+                prediction_result: Dict[str, float] = model.predict_with_confidence(
+                    features)
 
             # Display result
             st.markdown('<div class="prediction-bo">', unsafe_allow_html=True)
@@ -268,7 +301,7 @@ elif page == "Data Explorer":
 
         st.subheader('Feature Correlations')
         fig, ax = plt.subplots(figsize=(12, 8))
-        corr = data.corr()
+        corr: pd.DataFrame = data.corr()
         sns.heatmap(corr, annot=True, cmap='coolwarm', fmt='.2f', ax=ax)
         st.pyplot(fig)
 
@@ -277,7 +310,8 @@ elif page == "Data Explorer":
         st.info('💡 Zoom in/out and hover over points to see details!')
 
         # Sample data for performance (plotting 20k points can be slow)
-        sample_data = data.sample(min(5000, len(data)))
+        sample_size: int = (min(5000, len(data)))
+        sample_data: pd.DataFrame = data.sample(sample_size)
         fig = plot_geographic_prices(sample_data)
         st.plotly_chart(fig, use_container_width=True)
 
@@ -285,9 +319,11 @@ elif page == "Data Explorer":
         st.subheader('Raw Dataset')
         st.dataframe(data, use_container_width=True)
 
+        # Provide download option for dataset
+        csv_data = bytes = data.to_csv(index=False).encode('utf-8')
         st.download_button(
             label='📥 Download Data as CSV',
-            data=data.to_csv(index=False).encode('utf-8'),
+            data=csv_data,
             file_name='california_housing_data.csv',
             mime='text/csv'
         )
@@ -303,7 +339,7 @@ elif page == 'Model Insights':
 
     # Feature importance
     st.subheader('🎯 Most Important Features')
-    importance_data = model.get_feature_importance()
+    importance_data: Optional[Dict[str, Any]] = model.get_feature_importance()
 
     if importance_data:
         fig = plot_feature_importance(
@@ -345,8 +381,8 @@ elif page == 'About':
 st.markdown("""
 ### 🎓 Project Overview
 
-This is a **Machine Learning** portfolio project that predicts California housing prices
-using real-world data and industry-standard techniques.
+This is a **Machine Learning** portfolio project that predicts California 
+housing prices using real-world data and industry-standard techniques.
 
 ### 🛠️ Tech Stack
 - **Python 3.13.11**
@@ -380,10 +416,10 @@ including:
 - Mean Absolute Error: ~R$49,000
 
 ### 👨‍💻 Developer
-**Your Name**
+**Victal**
 Aspiring Data Scientist | Python Developer
 
-[GitHub](your-github-url) | [LinkedIn](your-linkedin-url)
+[GitHub](https://github.com/V1CTAL) | [LinkedIn](your-linkedin-url)
 
 ---
 
