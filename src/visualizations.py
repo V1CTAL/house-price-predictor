@@ -12,28 +12,16 @@ def plot_feature_importance(
         importances: List[float],
         top_n: int = 10) -> mpl_figure.Figure:
     """
-    Create a horizontal bar chart showing which features matter most for predictions.
+    plot the feature importance chart.
 
-    This visualization helps you understand what drives house prices in the model.
-    For example, if 'median_income' has the highest bar, that means income is
-    the strongest predictor of price in your model.
-
-    Parameters:
-        features: List of feature names sorted by importance (most important first)
-                 Example: ['median_income', 'longitude', 'latitude', ...]
-        importances: Corresponding importance scores (values between 0 and 1)
-                    These scores show the relative contribution of each feature
-        top_n: Number of top features to display (default 10)
-              We limit this because showing all 20+ features can be overwhelming
-
-    Returns:
-        A matplotlib Figure object containing the bar chart, which can be
-        displayed in Streamlit using st.pyplot(fig)
-
-    Visual Design:
-        - Horizontal bars make long feature names easier to read
-        - Highest importance appears at the top (inverted y-axis)
-        - Steel blue color provides good contrast without being harsh
+    :param features: Description
+    :type features: List[str]
+    :param importances: Description
+    :type importances: List[float]
+    :param top_n: Description
+    :type top_n: int
+    :return: Description
+    :rtype: Figure
     """
     # Create a figure with a reasonable size for web display
     # 10x6 inches provides good readability without takeing too much screen space
@@ -64,27 +52,14 @@ def plot_price_distribution(
         data: pd.DataFrame,
         predicted_price: Optional[float] = None) -> mpl_figure.Figure:
     """
-    Display a histogram showing how house prices are distributed across California.
+    Docstring for plot_price_distribution
 
-    This visualization answers the question: "How common are different price ranges?"
-    The height of each bar tells you how many houses fall into that price bracket.
-
-    If you provide a predicted price, it will be marked with a red dashed line,
-    allowing you to see where your prediction falls relative to all other houses.
-    For example, if your prediction line is on the far right, you're predicting
-    a price higher than most houses in the dataset.
-
-    Parameters:
-        data: DataFrame containing the housing data, must include 'median_house_value' column
-        predicted_price: Optional price to mark on the distribution (e.g., from a prediction)
-                        If None, just shows the overall distribution
-
-    Returns:
-        A matplotlib Figure showing the price distribution histogram
-
-    Statistical Note:
-        We use 50 bins to balance detail with clarity. Too few bins lose information,
-        too many bins create a noisy, hard-to-read chart.
+    :param data: Description
+    :type data: pd.DataFrame
+    :param predicted_price: Description
+    :type predicted_price: Optional[float]
+    :return: Description
+    :rtype: Figure
     """
     # Create a well-sized figure for the histogram
     fig, ax = plt.subplots(figsize=(10, 6))
@@ -126,30 +101,9 @@ def plot_geographic_prices(
         data: pd.DataFrame,
         predicted_location: Optional[Dict[str, float]] = None) -> go.Figure:
     """
-    Create an interactive map showing California housing data geographically.
-
-    This is one of the most insightful visualizations because housing prices
-    are heavily influenced by location. The map uses color to show population
-    density, and you can hover over any point to see details about that area.
-
-    The interactive nature means users can zoom into specific regions like
-    San Francisco or Los Angeles to see fine-grained patterns.
-
-    Parameters:
-        data: DataFrame with geographic and housing data, must include:
-             - 'latitude' and 'longitude' for positioning
-             - 'population' for color coding
-             - 'median_income' and 'housing_median_age' for hover information
-        predicted_location: Optional dictionary with 'latitude' and 'longitude' keys
-                           If provided, marks the user's property with a red star
-
-    Returns:
-        A Plotly Figure object with interactive map capabilities
-        Users can zoom, pan, and hover for more details
-
-    Design Choice:
-        We use 'Viridis' color scale because it's colorblind-friendly and
-        shows gradients clearly from low (purple) to high (yellow) values
+    Plot housing prices geographically using an interactive map.
+    Args:
+        data (pd.DataFrame): DataFrame containing housing data with
     """
     # Create scatter plot on mapbox (interactive map background)
     # Each data point represents a geographic block group
@@ -196,34 +150,14 @@ def plot_geographic_prices(
 def plot_prediction_confidence(
         prediction_data: Dict[str, float]) -> mpl_figure.Figure:
     """
-    Visualize a prediction with its confidence interval as an error bar chart.
-
-    This chart is crucial for understanding prediction uncertainty. The blue bar
-    shows your predicted price, while the red error bars show the range where
-    we're 95% confident the true price falls.
-
-    Think of it like a weather forecast: "It will be 75°F, give or take 5 degrees."
-    The prediction_data contains that central estimate and the "give or take" range.
-
-    A narrow confidence interval means the model is very certain. A wide interval
-    means there's more uncertainty, perhaps because the input features represent
-    an unusual property the model hasn't seen much of during training.
-
-    Parameters:
-        prediction_data: Dictionary containing:
-            - 'prediction': The central predicted price
-            - 'lower_bound': Lower edge of 95% confidence interval
-            - 'upper_bound': Upper edge of 95% confidence interval
-
-    Returns:
-        A matplotlib Figure showing the prediction with confidence bars
-
-    Visual Elements:
-        - Blue horizontal bar: The point estimate (our best guess)
-        - Red error bars with caps: The uncertainty range
-        - The caps on the error bars make the bounds clearly visible
+    Plot the prediction with confidence intervals.
+    Args:
+        prediction_data (Dict[str, float]): Dictionary with keys:
+            - 'prediction': float, the predicted price
+            - 'lower_bound': float, lower bound of confidence interval
+            - 'upper_bound': float, upper bound of confidence interval
     """
-    # Create a compact figure since we're only showing one prediction
+    # Create figure for the confidence interval plot
     fig, ax = plt.subplots(figsize=(10, 4))
 
     # Extract the prediction components for clearer code
@@ -272,29 +206,12 @@ def plot_comparison_chart(
         user_input: Dict[str, float],
         dataset_stats: pd.DataFrame) -> mpl_figure.Figure:
     """
-    Create a side-by-side comparison of user inputs versus dataset averages.
-
-    This visualization helps users understand: "Is my property typical or unusual?"
-    For example, if your median_income bar is much higher than the average bar,
-    you're looking at a wealthier area than typical.
-
-    This context is valuable because it helps explain why a prediction might be
-    high or low. If most of your input values exceed the averages, a high
-    predicted price makes sense.
-
-    Parameters:
-        user_input: Dictionary of feature names to values that the user provided
-                   Example: {'median_income': 5.0, 'housing_median_age': 15, ...}
-        dataset_stats: DataFrame containing the full dataset for calculating averages
-                      Must include columns matching the keys in user_input
-
-    Returns:
-        A matplotlib Figure with grouped bar chart comparing input vs average
-
-    Limitation:
-        This only works for numeric features. Categorical features like
-        ocean_proximity are excluded from this comparison.
+    Plot a comparison chart between user input features and dataset averages,
+    Args:
+        user_input (Dict[str, float]): User-provided feature values
+        dataset_stats (pd.DataFrame): DataFrame containing dataset statistics
     """
+
     # Extract feature names and user-provided values
     features: List[str] = list(user_input.keys())
     user_values: List[float] = list(user_input.values())

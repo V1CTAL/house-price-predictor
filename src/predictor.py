@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 import joblib  # type: ignore
-import pandas as pd
+import pandas as pd  # type: ignore
 import numpy as np
 from numpy.typing import NDArray
 
@@ -10,7 +10,7 @@ class HousingPredictor:
     """
     A predictor class for estimating California housing prices.
 
-    This class wraps a trained Random Forest Model and provides methods
+    This class wraps a trained Random Forest model and provides methods
     for making predictions with confidence intervals and extracting
     feature importance information.
 
@@ -24,7 +24,7 @@ class HousingPredictor:
 
         Parameters:
             model_path: Path to the serialized model file (.pkl format)
-                        can be either a Path object or a string path
+                       Can be either a Path object or a string path
 
         Note:
             The model is expected to be a scikit-learn model saved with joblib
@@ -37,30 +37,12 @@ class HousingPredictor:
 
     def predict_price(self, features: Dict[str, Any]) -> float:
         """
-        Make a single price prediction given housing features.
-
-        This method takes a dictionary of features and returns a single
-        predicted price value. It's the simpler prediction method without
-        confidence intervals.
-
+        Make a price prediction based on input features.
         Parameters:
-            features: Dictionary containing feature names as keys and their
-                     corresponding values. Must include all features the model
-                     was trained on (e.g., 'longitude', 'latitude', 
-                     'median_income', etc.)
-
+            features: Dictionary of feature names and their values.
+                      Must include all features required by the model
         Returns:
-            The predicted house price as a float value
-
-        Example:
-            >>> features = {
-            ...     'longitude': -118.0,
-            ...     'latitude': 34.0,
-            ...     'median_income': 3.5,
-            ...     # ... other features
-            ... }
-            >>> price = predictor.predict_price(features)
-            >>> print(f"Predicted price: ${price:,.2f}")
+            Predicted housing price as a float
         """
         # Convert the dictionary to a DataFrame because scikit-learn models
         # expect tabular data in this format. The [features] wraps the dict
@@ -74,42 +56,33 @@ class HousingPredictor:
         return prediction
 
     def predict_with_confidence(
-            self,
-            features: Dict[str, Any],
-            n_estimators: Optional[int] = None) -> Dict[str, float]:
+        self,
+        features: Dict[str, Any],
+        n_estimators: Optional[int] = None
+    ) -> Dict[str, float]:
         """
-        Make a prediction with a 95 % confidence interval.
-
-        This method works specifically with Random Forest models by collecting
-        predictions from each individual tree in the forest. The variation
-        among these predictions gives us a measure of uncertainty.
-
-        The confidence interval tells us: "We're 95% confident the true price
-        falls within this range." A narrower interval means more certainty,
-        while a wider interval indicates more uncertainty in the prediction.
-
+        Make a price prediction with a 95% confidence interval.
+        This method uses the ensemble nature of Random Forests to estimate
+        uncertainty in the predictions.
         Parameters:
-            features: Dictionary of housing features (same format as predict_price)
-            n_estimators: Optional parameter for future use (currently not used,
-                         but kept for API compatibility)
-
-        Returns:
+            features: Dictionary of feature names and their values. 
+            Must include all features
+            n_estimators: Optional number of trees to use for prediction.
+                          If None, uses all trees in the model.
+            Returns:
             Dictionary containing:
-                - 'prediction': The mean prediction across all trees
-                - 'lower_bound': Lower bound of 95% confidence interval
-                - 'upper_bound': Upper bound of 95% confidence interval
+                - 'prediction': The mean predicted price
+                - 'lower_bound': Lower bound of the 95% confidence interval
+                - 'upper_bound': Upper bound of the 95% confidence interval
                 - 'confidence_range': Width of the confidence interval
-
-        Note:
-            Uses a 1.96 standard deviation multiplier for 95% confidence,
-            which comes from the normal distribution Z-score
         """
+
         # Prepare the input data in the format expected by the model
         df: pd.DataFrame = pd.DataFrame([features])
 
         # Collect predictions from each tree in the Random Forest
         # This gives us a distribution of predictions rather than just one value
-        predictions: list[float] = []
+        predictions: List[float] = []
         for tree in self.model.estimators_:
             # Each tree makes its own independent prediction
             pred: float = tree.predict(df)[0]
@@ -121,6 +94,7 @@ class HousingPredictor:
         # Calculate the central tendency and spread of predictions
         # The mean gives us our best estimate
         mean_prediction: float = float(predictions_array.mean())
+        # The standard deviation tells us how much trees disagree
         std_prediction: float = float(predictions_array.std())
 
         # Calculate 95% confidence interval using the empirical rule
@@ -130,7 +104,8 @@ class HousingPredictor:
 
         return {
             'prediction': mean_prediction,
-            'lower_bound': max(0, lower_bound),  # Price can't be negative
+            # Ensure price is non-negative
+            'lower_bound': max(0.0, lower_bound),
             'upper_bound': upper_bound,
             'confidence_range': upper_bound - lower_bound
         }
@@ -157,24 +132,24 @@ class HousingPredictor:
             (like RandomForest, GradientBoosting, etc.)
         """
         # Check if this model type provides feature importance
-        # Tree-based models have this attribute, bu linear models don't
+        # Tree-based models have this attribute, but linear models don't
         if hasattr(self.model, 'feature_importances_'):
             # Get the feature names that the model was trained with
             # This ensures we match importance scores to the correct features
-            feature_names: NDArray = self.model.features_names_in_
+            feature_names: NDArray = self.model.feature_names_in_
 
             # Get the importance score for each feature
             # These scores sum to 1.0 and represent relative importance
             importances: NDArray = self.model.feature_importances_
 
             # Sort features by importance in descending order
-            # [::-1] reverse the array so highest importance comes first
+            # [::-1] reverses the array so highest importance comes first
             indices: NDArray = np.argsort(importances)[::-1]
 
             # Build the result dictionary with features sorted by importance
             return {
                 'features': [feature_names[i] for i in indices],
-                'importances': [importances[i] for i in indices]
+                'importances': [float(importances[i]) for i in indices]
             }
         else:
             # Model doesn't support feature importance (e.g., linear regression)
