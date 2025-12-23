@@ -1,7 +1,8 @@
 """
 California Housing Price Predictor - Main Application
-This Streamlit application allows users to explore housing data, predict prices using a trained model,
-view prediction history, and gain insights into the model's performance.
+This Streamlit application allows users to explore housing data, predict prices
+using a trained model, view prediction history, and gain insights into the
+model's performance.
 """
 
 import os
